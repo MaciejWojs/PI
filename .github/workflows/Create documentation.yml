@@ -48,7 +48,6 @@ jobs:
       - name: plantuml to file
         run: |
           uv run hpp2plantuml -i *.hpp -o ${{ env.UML_FILE }}
-          curl -F "file1=@${{ env.UML_FILE }}" ${{ secrets.DISCORD_WEBHOOK_URL }}
 
       - name: Ading UML to Header file
         run: |
@@ -191,8 +190,3 @@ jobs:
             ${{env.UML_WITHOUT_EXT}}-dark.png
             ${{env.UML_WITHOUT_EXT}}-white.svg
             ${{env.UML_WITHOUT_EXT}}-dark.svg
-
-      - name: Send Discord Notification
-        if: env.IS_TAG == 'true'
-        run: |
-          curl -s -H "Content-Type: application/json" -d '{"content": "Stworzono dokumentację @everyone"}' ${{ secrets.DISCORD_WEBHOOK_URL }} &> /dev/null
