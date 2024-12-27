@@ -1,3 +1,12 @@
+/**
+ * @file main.cpp
+ * @~english
+ * @brief Main file for running the PI calculation and benchmarking.
+ *
+ * @~polish
+ * @brief Główny plik do uruchamiania obliczeń PI i testów wydajnościowych.
+ */
+
 #include <iostream>
 #include <limits>
 #include <string>
@@ -6,7 +15,30 @@
 #define MAX_THREADS 50
 #define FILENAME "benchmark.csv"
 
+ /**
+  * @~english
+  * @brief Prompts the user to enter the number of threads to use.
+  * @return The number of threads entered by the user.
+  *
+  * @~polish
+  * @brief Prosi użytkownika o podanie liczby wątków do użycia.
+  * @return Liczba wątków podana przez użytkownika.
+  */
 int get_num_threads();
+
+/**
+ * @~english
+ * @brief Saves the benchmark results to a CSV file.
+ * @param threads The number of threads used.
+ * @param points The number of points used in the calculation.
+ * @param result The result of the calculation.
+ *
+ * @~polish
+ * @brief Zapisuje wyniki testów wydajnościowych do pliku CSV.
+ * @param threads Liczba użytych wątków.
+ * @param points Liczba punktów użytych w obliczeniach.
+ * @param result Wynik obliczeń.
+ */
 void save_to_csv(int threads, long long points, double result);
 
 int main(int argc, char** argv) {
