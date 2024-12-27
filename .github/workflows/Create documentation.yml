@@ -9,6 +9,7 @@ on:
 env:
   NEWEST_TAG: ${{ github.ref_name }}
   REPO: ${{ github.repository }}
+  REPO_NAME: ${{ github.event.repository.name }}
   FILE_NAME: main
   IS_TAG: ${{ startsWith(github.ref, 'refs/tags/') }}
   LATEX_DIR: ./docs/latex/
