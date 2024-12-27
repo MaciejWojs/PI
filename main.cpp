@@ -12,18 +12,34 @@
 #include <string>
 #include <fstream>
 #include "PI.hpp"
-#define MAX_THREADS 50
-#define FILENAME "benchmark.csv"
 
  /**
   * @~english
-  * @brief Prompts the user to enter the number of threads to use.
-  * @return The number of threads entered by the user.
+  * @brief Maximum number of threads that can be used.
   *
   * @~polish
-  * @brief Prosi użytkownika o podanie liczby wątków do użycia.
-  * @return Liczba wątków podana przez użytkownika.
+  * @brief Maksymalna liczba wątków, które mogą być użyte.
   */
+#define MAX_THREADS 50
+
+  /**
+   * @~english
+   * @brief Filename for saving benchmark results.
+   *
+   * @~polish
+   * @brief Nazwa pliku do zapisywania wyników testów wydajnościowych.
+   */
+#define FILENAME "benchmark.csv"
+
+   /**
+    * @~english
+    * @brief Prompts the user to enter the number of threads to use.
+    * @return The number of threads entered by the user.
+    *
+    * @~polish
+    * @brief Prosi użytkownika o podanie liczby wątków do użycia.
+    * @return Liczba wątków podana przez użytkownika.
+    */
 int get_num_threads();
 
 /**
@@ -41,6 +57,19 @@ int get_num_threads();
  */
 void save_to_csv(int threads, long long points, double result);
 
+/**
+ * @~english
+ * @brief Main function for running the PI calculation and benchmarking.
+ * @param argc Number of command-line arguments.
+ * @param argv Array of command-line arguments.
+ * @return Exit status of the program.
+ *
+ * @~polish
+ * @brief Główna funkcja do uruchamiania obliczeń PI i testów wydajnościowych.
+ * @param argc Liczba argumentów wiersza poleceń.
+ * @param argv Tablica argumentów wiersza poleceń.
+ * @return Status zakończenia programu.
+ */
 int main(int argc, char** argv) {
     if (argc > 1 && std::string(argv[1]) == "--benchmark") {
         long long num_points[3] = { 100000000, 1000000000, 3000000000 };
