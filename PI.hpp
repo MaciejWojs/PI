@@ -3,6 +3,7 @@
 
 class PI {
     public:
+    PI() = delete;
     // Konstruktor przyjmujący liczbę punktów i liczbę wątków
     PI(long long num_points, int num_threads);
 
