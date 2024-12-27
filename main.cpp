@@ -3,6 +3,7 @@
 
 int main() {
     PI pi(1000000, 4);
+    pi.calculate();
 
     std::cout << "Hello, World!" << std::endl;
     return 0;
