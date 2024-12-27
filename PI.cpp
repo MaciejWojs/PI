@@ -4,6 +4,15 @@
 #include <thread>
 #include <chrono>
 
+/**
+ * @file PI.cpp
+ * @~english
+ * @brief Implementation of the PI class for calculating the approximate value of PI using the numerical integration method.
+ *
+ * @~polish
+ * @brief Implementacja klasy PI do obliczania przybliżonej wartości liczby PI za pomocą metody całkowania numerycznego.
+ */
+
 PI::PI(long long num_points, int num_threads)
     : num_points(num_points), num_threads(num_threads) {
 }
