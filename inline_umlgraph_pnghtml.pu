@@ -1,0 +1,10 @@
+@startuml inline_umlgraph_1.png
+class PI {
+-num_threads : int
+-num_points : long long
+-calculate_integral(long long start, long long end, double& result) : void
++PI(long long num_points, int num_threads)
++calculate() : double
+
+}
+@enduml
