@@ -1,7 +1,0 @@
-<map id="PI.hpp" name="PI.hpp">
-<area shape="rect" id="Node000001" title="Header file for the PI class, which calculates the integral of PI using multiple threads." alt="" coords="53,5,115,31"/>
-<area shape="rect" id="Node000002" href="$PI_8cpp.html" title="Implementation of the PI class for calculating the approximate value of PI using the numerical integr..." alt="" coords="5,79,67,104"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="71,44,46,80,42,77,66,41"/>
-<area shape="rect" id="Node000003" href="$main_8cpp.html" title="Main file for running the PI calculation and benchmarking." alt="" coords="91,79,173,104"/>
-<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="102,41,126,77,122,80,97,44"/>
-</map>
