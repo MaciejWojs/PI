@@ -29,165 +29,129 @@ jobs:
     steps:
       - name: Set up Git repository
         uses: actions/checkout@v4
-      
-      - name: Set up JDK ${{ env.JAVA_VERSION }}
+
+      - name: Set up JDK and Python
         uses: actions/setup-java@v4
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'zulu'
-
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          # cache: 'pip' # caching pip dependencies
-      - run: |
-          python -m pip install --upgrade pip
-          pip install uv --break-system-packages
-          uv venv
-          uv pip install hpp2plantuml
 
-      - name: plantuml to file
+      - name: setup UV
+        id: setup-uv
+        uses: astral-sh/setup-uv@v5.1.0
+        with:
+          enable-cache: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: doxygen-install
+        uses: ssciwr/doxygen-install@v1.6.0
+
+      - name: Configure Parallel APT
         run: |
-          uv run hpp2plantuml -i *.hpp -o ${{ env.UML_FILE }}
+          sudo bash -c 'cat > /etc/apt/apt.conf.d/99parallel << EOF
+          Acquire::Queue-Mode "host";
+          Acquire::http::Pipeline-Depth 200;
+          Acquire::Languages "none";
+          Acquire::Retries 3;
+          Acquire::http::Timeout 30;
+          Acquire::https::Timeout 30;
+          EOF'
 
-      - name: Ading UML to Header file
-        run: |
-          uv run ./convert.py ${{env.UML_FILE}} ${{env.HEADER_FILE}}
-
-
-      - name: Check for cache
+      - name: Check for cached packages
         uses: awalsh128/cache-apt-pkgs-action@latest
         id: cache-packages
         with:
-          packages: graphviz ghostscript
+          packages:  make texlive-binaries texlive-font-utils texlive-base texlive-latex-extra texlive-lang-polish ghostscript graphviz inkscape
           version: 1.0
           execute_install_scripts: true
 
+      - name: Update TeX Live
+        if: steps.cache-packages.outputs.cache-hit == 'true'
+        run: sudo apt install --reinstall -y texlive-binaries texlive-font-utils texlive-base texlive-latex-extra texlive-lang-polish -o Dpkg::Options::="--force-confnew" -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30
+      
       - name: Install required packages
         if: steps.cache-packages.outputs.cache-hit != 'true'
-        run: sudo apt update && sudo apt install -y graphviz ghostscript
+        run: sudo apt update && sudo apt install -y make texlive-binaries texlive-font-utils texlive-base texlive-latex-extra texlive-lang-polish ghostscript graphviz inkscape
+      
+      - name: Install dependencies
+        run: |
+          uv venv
+          uv pip install hpp2plantuml
+          uv run hpp2plantuml -i *.hpp -o ${{ env.UML_FILE }}
+          uv run ./convert.py ${{ env.UML_FILE }} ${{ env.HEADER_FILE }}
 
-      - name: Cache Docker images
-        if: env.IS_TAG == 'true'
-        id: docker_cache
-        uses: ScribeMD/docker-cache@0.5.0
-        with:
-          key: docker-${{ runner.os }}-${{ hashFiles('Dockerfile') }}
-
-      - name: Pull TeX Live Docker image if not cached
-        if: env.IS_TAG == 'true' && steps.docker_cache.outputs.cache-hit != 'true'
-        run: docker pull ghcr.io/xu-cheng/texlive-full:latest
-
-
-      - name: PlantUML
+      - name: Configure PlantUML
         run: |
           latest_version=$(curl -s https://api.github.com/repos/plantuml/plantuml/releases/latest | jq -r '.tag_name')
-          download_url="https://github.com/plantuml/plantuml/releases/download/${latest_version}/plantuml-${latest_version#"v"}.jar"
-          wget -q -O plantuml.jar "$download_url"
-
-          echo -e "PLANTUML_JAR_PATH      = plantuml.jar\n" >> Doxyfile
-          echo -e "PLANTUML_CFG_FILE      = config.txt\n" >> Doxyfile
-          echo -e "skinparam monochrome reverse\nskinparam backgroundColor transparent\n" > config.txt
+          wget -q -O plantuml.jar https://github.com/plantuml/plantuml/releases/download/${latest_version}/plantuml-${latest_version#"v"}.jar
+          echo "skinparam backgroundColor transparent" > config.txt
 
       - name: Generate UML assets
         run: |
-          java -jar plantuml.jar -tpng ${{ env.UML_FILE }}
-          mv ${{env.UML_WITHOUT_EXT}}.png uml-white.png
-          java -jar plantuml.jar -tpng ${{ env.UML_FILE }} -config config.txt
-          mv ${{env.UML_WITHOUT_EXT}}.png uml-dark.png
-          java -jar plantuml.jar -tsvg ${{ env.UML_FILE }}
-          mv ${{env.UML_WITHOUT_EXT}}.svg uml-white.svg
-          java -jar plantuml.jar -tsvg ${{ env.UML_FILE }} -config config.txt
-          mv ${{env.UML_WITHOUT_EXT}}.svg uml-dark.svg
-      
-      - name: Prettify doxygen
-        run: |
-          latest_version=$(curl -s https://api.github.com/repos/jothepro/doxygen-awesome-css/releases/latest | jq -r '.tag_name')
-          download_url="https://github.com/jothepro/doxygen-awesome-css/archive/refs/tags/${latest_version}.tar.gz"
-          wget -q -O doxygen-awesome-css.tar.gz "$download_url"
+          for theme in white dark; do
+            [ $theme == "dark" ] && echo "skinparam monochrome reverse" >> config.txt
+            for ext in svg png; do
+              java -jar plantuml.jar -t$ext -config config.txt ${{ env.UML_FILE }}
+              mv ${{ env.UML_WITHOUT_EXT }}.$ext ${{ env.UML_WITHOUT_EXT }}-$theme.$ext
+            done
+          done
 
-          tar -xzf doxygen-awesome-css.tar.gz
-          mv doxygen-awesome-css*/ doxygen-awesome-css/
-          cp doxygen-awesome-css/doxygen-awesome.css doxygen-awesome-css/doxygen-awesome-sidebar-only.css -t . 
-          echo "GENERATE_TREEVIEW      = YES" >> Doxyfile
-          echo "DISABLE_INDEX          = NO" >> Doxyfile
-          echo "FULL_SIDEBAR           = NO" >> Doxyfile
-          echo "HTML_EXTRA_STYLESHEET  = doxygen-awesome.css doxygen-awesome-sidebar-only.css" >> Doxyfile
-          rm -rf doxygen-awesome-css.tar.gz doxygen-awesome-css/
-          
-      - name: Set Doxygen project version
+      - name: Configure Doxygen
         run: |
+          wget -q -O doxygen-awesome.css https://raw.githubusercontent.com/jothepro/doxygen-awesome-css/main/doxygen-awesome.css
+          wget -q -O doxygen-awesome-sidebar-only.css https://raw.githubusercontent.com/jothepro/doxygen-awesome-css/main/doxygen-awesome-sidebar-only.css
+          cat >> Doxyfile << EOL
+          PLANTUML_JAR_PATH      = plantuml.jar
+          PLANTUML_CFG_FILE      = config.txt
+          GENERATE_TREEVIEW      = YES
+          DISABLE_INDEX          = NO
+          FULL_SIDEBAR           = NO
+          HTML_EXTRA_STYLESHEET  = doxygen-awesome.css doxygen-awesome-sidebar-only.css
+          EOL
           if [ "${{ env.IS_TAG }}" = "true" ]; then
             echo PROJECT_NUMBER = ${NEWEST_TAG} >> Doxyfile
           else
             latest_tag=$(curl -s https://api.github.com/repos/${{ env.REPO }}/releases/latest | jq -r '.tag_name')
             echo PROJECT_NUMBER = ${latest_tag} >> Doxyfile
           fi
-
-      - name: Set Doxygen project name and description
-        run: |
           echo PROJECT_NAME = "${{ env.REPO_NAME }}" >> Doxyfile
           echo PROJECT_BRIEF = "Implementacja ${{ env.REPO_NAME }}" >> Doxyfile
 
       - name: Generate Doxygen Documentation
-        uses: mattnotmitt/doxygen-action@edge
-        with:
-          additional-packages: openjdk21 python3 plantuml
-          # enable-latex: true
-          addidtional_paths: plantuml.jar 
+        run: |
+          doxygen Doxyfile
+          sudo mv ${{ env.LATEX_DIR }} ./docs/latex-pl
+          # Change Doxyfile language to English
+          sed -i 's/OUTPUT_LANGUAGE        = Polish/OUTPUT_LANGUAGE        = English/' Doxyfile
+          doxygen Doxyfile
 
       - name: Deploy HTML Documentation
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ${{env.HTML_DIR}}
-
-      - name: Compile Polish PDF
-        if: env.IS_TAG == 'true'
-        uses: xu-cheng/latex-action@3.2.0
-        with:
-          extra_system_packages: "inkscape"
-          latexmk_shell_escape: true
-          working_directory: ${{env.LATEX_DIR}}
-          root_file: refman.tex
-      
-      - name: Copy Polish PDF
-        if: env.IS_TAG == 'true'
-        run: cp ${{env.LATEX_DIR}}refman.pdf ./pl-${{ env.FILE_NAME }}.pdf
-
-      - name: Change Doxyfile language to English
-        if: env.IS_TAG == 'true'
-        run: sed -i 's/OUTPUT_LANGUAGE        = Polish/OUTPUT_LANGUAGE        = English/' Doxyfile
-
-      - name: Generate English Doxygen Documentation
-        if: env.IS_TAG == 'true'
-        uses: mattnotmitt/doxygen-action@edge
-        with:
-          additional-packages: openjdk21 python3 plantuml
-          addidtional_paths: plantuml.jar
+          publish_dir: ${{ env.HTML_DIR }}
 
       - name: Compile English PDF
-        if: env.IS_TAG == 'true'
-        uses: xu-cheng/latex-action@3.2.0
-        with:
-          extra_system_packages: "inkscape"
-          latexmk_shell_escape: true
-          working_directory: ${{env.LATEX_DIR}}
-          root_file: refman.tex
+        working-directory: ${{ env.LATEX_DIR }}
+        run: |
+          make -B
+          cp refman.pdf ${{github.workspace}}/en-${{ env.FILE_NAME }}.pdf
 
-      - name: Copy English PDF
-        if: env.IS_TAG == 'true'
-        run: cp ${{env.LATEX_DIR}}refman.pdf ./en-${{ env.FILE_NAME }}.pdf
+   
+      - name: Compile Polish PDF
+        working-directory: ./docs/latex-pl
+        run: |
+          make -B
+          cp refman.pdf ${{github.workspace}}/pl-${{ env.FILE_NAME }}.pdf
 
-      - name: Release PDFs
-        if: env.IS_TAG == 'true'
+      - name: Release PDFs and UML
+        if: ${{ env.IS_TAG == 'true' }}
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
           artifacts: |
-            pl-${{ env.FILE_NAME }}.pdf
-            en-${{ env.FILE_NAME }}.pdf
-            ${{env.UML_WITHOUT_EXT}}-white.png
-            ${{env.UML_WITHOUT_EXT}}-dark.png
-            ${{env.UML_WITHOUT_EXT}}-white.svg
-            ${{env.UML_WITHOUT_EXT}}-dark.svg
+            *-${{ env.FILE_NAME }}.pdf
+            ${{ env.UML_WITHOUT_EXT }}-*
